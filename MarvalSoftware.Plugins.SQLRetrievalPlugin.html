@@ -1,0 +1,232 @@
+<script type="text/javascript" src="template.js"></script>
+
+<style>
+    input.selectInput {
+        width: 500px !important;
+    }
+</style>
+<template>
+
+</template>
+<script>
+
+    (function () {
+
+        var MarvalSoftware = window.top.MarvalSoftware;
+        var $ = window.top.$;
+
+        MarvalSoftware.Plugins.define("marval-software-plugins-sql-query",
+            {
+                _pluginPath: null,
+                _requestNumber: null,
+                _requestDescription: null,
+                _element: null,
+                _issuesElement: null,
+                _testElement: null,
+                _typeElement: null,
+                _summaryElement: null,
+                _createElement: null,
+                _htmlPrefix: null,
+                _renderIssuesRequest: null,
+                _typeLoadingElement: null,
+                _contactEmail: null,
+                _contactUsername: null,
+                _contactCheckbox: null,
+                _attachments: null,
+                _selectedAttachmentIds: null,
+                _selectAttachmentElement: null,
+                _issueOptionsElement: null,
+                _reporterCheckboxLabel: null,
+                _reporterCheckboxElement: null,
+                _attachmentsCheckboxList: null,
+
+                init: function () {
+
+                    const keyelement = window.top.document.getElementById("ctl00_ctl00_cph_maintenance_globalSettingsRepeater_ctl01_key");
+                    if (keyelement) {
+                        keyelement.style.display = 'none';
+                    }
+                    var currentUrl = window.top.location.href;
+
+                    var PWelement = $('#ctl00_ctl00_cph_entityHeaderText').text();
+                    console.log("Element text is ", PWelement);
+                    if (currentUrl.includes("Plugin.aspx") && PWelement.includes('SQL')) {
+
+                        $('input#ctl00_ctl00_cph_maintenance_globalSettingsRepeater_ctl01_value').closest('span.formSpan').hide();
+                        var template = document.querySelector('template').content;
+                        this._element = window.top.document.importNode(template, true);
+                        this._testElement = this._element.querySelector("#ctl00_ctl00_cph_maintenance_globalSettingsFieldSet");
+                        $('#ctl00_ctl00_cph_maintenance_globalSettingsFieldSet').append(`
+    <fieldset style="width: 800px" id="fieldMapping">
+    <br><span style="font-weight: bold">SQL Queries</span> <br><br>
+    <div id="itemsContainer"></div>
+    <button type="button" id="addNewItemButton">Add New Item</button>
+    <button type="button" id="saveItemsButton">Save</button>
+    <div id="savebuttonConfirm" style="color:green;font-weight:bold; display: none"><br><span style="color:green">Items Saved</span><br>Remember to click Apply on the bottom right to commit your changes</div>
+    <div id="savebuttonConfirm2" style="color:green;font-weight:bold; display: none"><br>Remember to click Save to save your changes</div>
+    </fieldset>
+    <br><br>
+    <fieldset style="width: 800px" id="testPlugin">
+        <legend>Test Plugin</legend><br>The plugin test will run a query against the first item in your list.
+        <span class="formSpan">
+            <button id="testplugin">Test</button>
+            <div id="responseContainer">
+                <pre id="formattedResponse"></pre>
+            </div>
+        </span>
+    </fieldset>
+   `);
+                        window.top.document.getElementById("addNewItemButton").onclick = addItem;
+                        window.top.document.getElementById("saveItemsButton").onclick = saveItems;
+
+                        var that = this;
+                        const field = window.top.document.getElementById("ctl00_ctl00_cph_maintenance_globalSettingsRepeater_ctl01_value");
+                        console.log("Value is ", field.value);
+                        const container = document.getElementById("itemsContainer");
+                        if (field.value) {
+                            const data = JSON.parse(field.value);
+                            const items = data.items;
+                            console.log("Adding item in main section");
+                            items.forEach((item, index) => {
+                                console.log("Items are %s and %s ", item[0], item[1]);
+                                addItem(item[0], item[1]);
+                            });
+                        }
+                        $(document).ready(function () {
+                            const container = window.top.document.getElementById("itemsContainer");
+                            $(container).on('input', 'input', function () {
+                                $('#savebuttonConfirm2').show();
+                            });
+                            var urlGenerator = currentUrl.split('RFP');
+                            console.log("Have URL1 as ", urlGenerator[0]);
+                            console.log("Have URL2 as ", urlGenerator[1]);
+                            var version = $('#ctl00_ctl00_cph_maintenance_version').text();
+                            $('#itemsContainer .item .tagInput[type="text"]').each(function (index, element) {
+                                var inputValue = $(this).val();
+                                var FullURL = urlGenerator[0] + 'RFP/Plugins/MarvalSoftware/MarvalSoftware.Plugins.SQLQuery/' + version + '/Handler.ashx?tag=' + inputValue;
+                                $('#usage').after(FullURL + '<br>');
+                                if (index === $('#itemsContainer .item .tagInput[type="text"]').length - 1) {
+                                    $('#usage').after("<br><p><b>According to your current configuration, these are the following URL's you have configured</b><p><br>")
+                                }
+                            });
+                      
+                            console.log("Have URL2 as ", urlGenerator[1]);
+                   
+
+                            $('#testPlugin').on('click', '#testplugin', function (event) {
+                                const field = window.top.document.getElementById("ctl00_ctl00_cph_maintenance_globalSettingsRepeater_ctl01_value");
+                                console.log("Value is ", field.value);
+                                var newfieldItems = JSON.parse(field.value);
+                                console.log("Value length is ", newfieldItems.items.length);
+                                if (!field.value || newfieldItems.items.length === 0) {
+                                    console.log("field to test is blank");
+                                    event.preventDefault();
+                                    $('#formattedResponse').empty();
+                                    $('#formattedResponse').append('<span style="color:red">Please define an SQL query. This test will return the number of results for the first query in your list, under SQL Queries above.</span><br>');
+                                } else {
+                                    console.log("We have tags to test");
+
+
+                            
+                                    event.preventDefault(); 
+                                    var firstTagInputValue = $('#itemsContainer .item:first input[type="text"]').first().val();
+                                    console.log("Will test against tag ", firstTagInputValue);
+                                    $('#formattedResponse').empty();
+
+                                    $.ajax({
+                                        type: "GET",
+                                        url: that._getPluginPath() + "Handler.ashx?tag=" + firstTagInputValue,
+                                        contentType: "application/json; charset=utf-8",
+                                 
+                                        success: function (response) {
+                                            console.log("Response as ", response);
+                                 
+
+                                            if (response.errors) {
+                                                $('#formattedResponse').append('<span style="color:red">There was an error</span><br>');
+                                            } else {
+                                                $('#formattedResponse').append('<span style="color:green">Plugin response appeared to be successful, please see below.</span><br>');
+                                            }
+                                            var prettyResponse = JSON.stringify(response, null, 2);
+                                            $('#formattedResponse').append("Response<br>" + prettyResponse);
+
+
+                                            window.top.document.getElementById('testPlugin').scrollIntoView({
+                                                behavior: 'smooth'
+                                            });
+                                        },
+                                        error: function (xhr, status, error) {
+                                            $('#formattedResponse').append("There was an error<br>" + error);
+                                            console.error('AJAX request error:', status, error);
+                                            window.top.document.getElementById('testPlugin').scrollIntoView({
+                                                behavior: 'smooth'
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        });
+
+                    } else if (currentUrl.includes("Plugin.aspx")) {
+                    }
+                    function addItem(status = "", description = "") {
+
+                        if (typeof status !== "string") status = ""; 
+                        if (typeof description !== "string") description = ""; 
+
+                        const container = window.top.document.getElementById("itemsContainer");
+
+                        const div = window.top.document.createElement("div");
+                        div.className = "item";
+
+                        const statusInput = window.top.document.createElement("input");
+                        statusInput.type = "text";
+                        statusInput.value = status;
+                        statusInput.placeholder = "Tag";
+                        statusInput.className = "tagInput";
+                        statusInput.style.width = "120px";
+
+                        const descriptionInput = window.top.document.createElement("input");
+                        descriptionInput.type = "text";
+                        descriptionInput.value = description;
+                        descriptionInput.placeholder = "SQL Query";
+                        descriptionInput.className = "selectInput";
+                        descriptionInput.style.width = "500px";
+
+                        const removeButton = window.top.document.createElement("button");
+                        removeButton.innerHTML = "Remove";
+                        removeButton.onclick = function () {
+                            container.removeChild(div);
+                            saveItems();
+                        };
+
+                        div.appendChild(statusInput);
+                        div.appendChild(descriptionInput);
+                        div.appendChild(removeButton);
+                        container.appendChild(div);
+                    }
+
+                    function saveItems() {
+                        const container = window.top.document.getElementById("itemsContainer");
+                        const field = window.top.document.getElementById("ctl00_ctl00_cph_maintenance_globalSettingsRepeater_ctl01_value");
+                        const items = [];
+                
+                        $('#savebuttonConfirm2').hide();
+                        $('#savebuttonConfirm').show();
+                        container.querySelectorAll(".item").forEach(div => {
+                            const status = div.querySelector("input:nth-child(1)").value;
+                            const description = div.querySelector("input:nth-child(2)").value;
+                            items.push([status, description]);
+                        });
+
+                        const data = { "items": items };
+                        field.value = JSON.stringify(data);
+                    }
+                },
+                _getPluginPath: function () {
+                    return this.attributes["data-pluginpath"].value;
+                },
+            });
+    })();
+
+</script>
