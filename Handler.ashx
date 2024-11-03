@@ -19,6 +19,7 @@ using System.Linq;
 using System.Data;
 using System.Data.SqlClient;
 using Microsoft.Win32;
+using MarvalSoftware.Security;
 
 public class Handler : PluginHandler
 {
@@ -37,6 +38,7 @@ public class Handler : PluginHandler
     private int lastLocation { get; set; }
     private string TagQueryValue { get; set; }
     public override bool IsReusable { get { return false; } }
+    
     private string GetDBString()
 {
     string connectionString = "";
@@ -79,6 +81,9 @@ public class Handler : PluginHandler
 
     private string GetSQLResponse(string SQLQuery)
     {
+        var userid = User.CurrentUser.Identifier;                    
+        var userid2 = userid.ToString();     
+        SQLQuery = SQLQuery.Replace("@@UserId", userid2);
         if (!SQLQuery.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
         SQLQuery.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0 ||
         SQLQuery.IndexOf("DELETE", StringComparison.OrdinalIgnoreCase) >= 0 ||
