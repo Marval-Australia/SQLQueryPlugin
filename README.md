@@ -23,6 +23,12 @@ If your Marval directory is C:\Program Files\Marval Software\MSM\ the the file w
 
 
 
+## Special Fields
+
+There has been a special field added called @@UserId. This allows you to insert the userid of the person calling the integration.
+An example of how to use this is below. This will retrieve two requests where the assigneeId is the logged in user navigating to the endpoint.
+select top (2) * from request where assigneeId = '@@UserId'
+
 ## Contributing
 
 We welcome all feedback including feature requests and bug reports.
